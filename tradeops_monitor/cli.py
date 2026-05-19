@@ -10,9 +10,9 @@ from .anomalies import detect_anomalies, has_critical_anomalies
 from .lifecycle import reconstruct_lifecycles
 from .metrics import calculate_metrics
 from .models import AnalysisReport, OrderLifecycle, ParseResult
-from .output import format_report
+from .output import format_report, format_runs
 from .parser import parse_log_file
-from .storage import store_report
+from .storage import list_recent_runs, store_report
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -52,6 +52,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     runs = subparsers.add_parser("runs", help="List recent stored analysis runs.")
     runs.add_argument("--db", required=True, help="Local SQLite database path.")
+    runs.add_argument("--limit", type=int, default=10, help="Maximum number of runs to show.")
+    runs.add_argument(
+        "--output",
+        choices=("text", "json"),
+        default="text",
+        help="Output format.",
+    )
 
     return parser
 
@@ -63,6 +70,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "analyze":
             return _handle_analyze(args)
+        if args.command == "runs":
+            return _handle_runs(args)
         parser.error(f"Unknown command: {args.command}")
     except (FileNotFoundError, IsADirectoryError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -85,6 +94,15 @@ def _handle_analyze(args: argparse.Namespace) -> int:
 
     sys.stdout.write(format_report(report, output_format=args.output, show_orders=args.show_orders))
     return 2 if has_critical_anomalies(report.anomalies) else 0
+
+
+def _handle_runs(args: argparse.Namespace) -> int:
+    if args.limit <= 0:
+        raise ValueError("--limit must be greater than zero.")
+
+    runs = list_recent_runs(args.db, limit=args.limit)
+    sys.stdout.write(format_runs(runs, output_format=args.output))
+    return 0
 
 
 def build_analysis_report(
