@@ -14,7 +14,21 @@ The project is intentionally local-first:
 - standard-library runtime code
 - standard-library `unittest` coverage
 
-## Planned CLI
+## Install
+
+Python 3.11 or newer is recommended.
+
+```bash
+python -m pip install -e .
+```
+
+The CLI can also be run directly from the repository without installing:
+
+```bash
+python -m tradeops_monitor analyze --file sample_logs/orders_basic.log
+```
+
+## CLI Usage
 
 ```bash
 python -m tradeops_monitor analyze --file sample_logs/orders_basic.log
@@ -22,6 +36,21 @@ python -m tradeops_monitor analyze --file sample_logs/orders_anomalies.log --slo
 python -m tradeops_monitor analyze --file sample_logs/orders_basic.log --db tradeops.db
 python -m tradeops_monitor runs --db tradeops.db
 ```
+
+Useful options:
+
+- `--format plain/json/csv`: choose the input parser.
+- `--slow-ack-ms 250`: flag ACK latency above the threshold.
+- `--output text/json`: choose human-readable or automation-friendly output.
+- `--symbol ES`: analyze orders for a single symbol.
+- `--show-orders`: include per-order lifecycle details.
+- `--db tradeops.db`: store the analysis in a local SQLite database.
+
+Exit codes:
+
+- `0`: analysis completed normally.
+- `1`: input or CLI error, such as a missing file.
+- `2`: analysis completed and critical anomalies were found.
 
 ## Project Structure
 
