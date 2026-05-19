@@ -203,3 +203,34 @@ class Anomaly:
             "line_number": self.line_number,
             "details": dict(self.details),
         }
+
+
+@dataclass(frozen=True)
+class AnalysisReport:
+    source_file: str
+    input_format: str
+    slow_ack_ms: int
+    parse_result: ParseResult
+    lifecycles: dict[str, OrderLifecycle]
+    metrics: MetricsSummary
+    anomalies: list[Anomaly]
+
+    def to_dict(self, include_orders: bool = False) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "source_file": self.source_file,
+            "input_format": self.input_format,
+            "slow_ack_ms": self.slow_ack_ms,
+            "metrics": self.metrics.to_dict(),
+            "parse": {
+                "event_count": len(self.parse_result.events),
+                "issue_count": len(self.parse_result.issues),
+                "issues": [issue.to_dict() for issue in self.parse_result.issues],
+            },
+            "anomalies": [anomaly.to_dict() for anomaly in self.anomalies],
+        }
+        if include_orders:
+            payload["orders"] = [
+                lifecycle.to_dict(include_events=True)
+                for lifecycle in sorted(self.lifecycles.values(), key=lambda order: order.order_id)
+            ]
+        return payload
