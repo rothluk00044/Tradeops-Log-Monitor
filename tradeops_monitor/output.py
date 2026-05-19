@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Iterable
 
-from .models import AnalysisReport, Anomaly, MetricsSummary, OrderLifecycle
+from .models import AnalysisReport, Anomaly, MetricsSummary, OrderLifecycle, StoredRun
 
 
 def format_report(report: AnalysisReport, *, output_format: str = "text", show_orders: bool = False) -> str:
@@ -107,3 +107,25 @@ def _format_counter(counter: dict[str, int]) -> str:
     if not counter:
         return "none"
     return ", ".join(f"{key}={value}" for key, value in sorted(counter.items()))
+
+
+def format_runs(runs: list[StoredRun], *, output_format: str = "text") -> str:
+    if output_format == "text":
+        return format_runs_text(runs)
+    if output_format == "json":
+        return json.dumps([run.to_dict() for run in runs], indent=2, sort_keys=True)
+    raise ValueError(f"Unsupported output format: {output_format}")
+
+
+def format_runs_text(runs: list[StoredRun]) -> str:
+    lines = ["Recent Analysis Runs", "=" * 20]
+    if not runs:
+        return "\n".join(lines + ["No stored runs found."]) + "\n"
+
+    for run in runs:
+        lines.append(
+            f"- #{run.run_id} {run.created_at} "
+            f"source={run.source_file} format={run.input_format} "
+            f"orders={run.total_orders} anomalies={run.anomaly_count} critical={run.critical_anomaly_count}"
+        )
+    return "\n".join(lines) + "\n"
