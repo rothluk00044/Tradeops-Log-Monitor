@@ -107,7 +107,7 @@ class ParserTests(unittest.TestCase):
         )
 
         self.assertEqual(len(result.events), 1)
-        self.assertEqual(len(result.issues), 1)
+        self.assertEqual(len(result.issues), 2)
         self.assertIn("Malformed field token", result.issues[0].message)
 
     def test_invalid_json_line_is_reported(self) -> None:
