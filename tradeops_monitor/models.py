@@ -234,3 +234,25 @@ class AnalysisReport:
                 for lifecycle in sorted(self.lifecycles.values(), key=lambda order: order.order_id)
             ]
         return payload
+
+
+@dataclass(frozen=True)
+class StoredRun:
+    run_id: int
+    created_at: str
+    source_file: str
+    input_format: str
+    total_orders: int
+    anomaly_count: int
+    critical_anomaly_count: int
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "run_id": self.run_id,
+            "created_at": self.created_at,
+            "source_file": self.source_file,
+            "input_format": self.input_format,
+            "total_orders": self.total_orders,
+            "anomaly_count": self.anomaly_count,
+            "critical_anomaly_count": self.critical_anomaly_count,
+        }
