@@ -128,6 +128,31 @@ tradeops-log-monitor/
     test_storage.py
 ```
 
+Module responsibilities:
+
+- `parser.py`: parses plain-text, JSON-lines, and CSV order events.
+- `lifecycle.py`: reconstructs order state from grouped events.
+- `metrics.py`: calculates counts, latency, symbols, sides, and rejects.
+- `anomalies.py`: flags slow ACKs, missing ACKs, fill-before-ACK, duplicates, unknown events, malformed lines, and activity spikes.
+- `storage.py`: stores runs, orders, events, and anomalies in local SQLite.
+- `output.py`: formats text and JSON reports.
+
+## SQLite Storage
+
+When `--db` is provided, the analysis is stored in a local SQLite database. The schema is intentionally simple:
+
+- `runs`: one row per analysis execution.
+- `orders`: reconstructed lifecycle summary per order.
+- `events`: parsed event rows with original fields and raw line text.
+- `anomalies`: detected anomalies with severity and details.
+
+List recent stored runs:
+
+```bash
+python -m tradeops_monitor runs --db tradeops.db
+python -m tradeops_monitor runs --db tradeops.db --output json
+```
+
 ## Development
 
 Run tests:
@@ -136,4 +161,16 @@ Run tests:
 python -m unittest discover -s tests
 ```
 
-More usage examples and sample output will be added as the CLI features land.
+Run a focused test module:
+
+```bash
+python -m unittest tests.test_parser
+```
+
+## Future Improvements
+
+- Add configurable anomaly thresholds for reject and symbol spikes.
+- Add richer CSV examples and fixtures.
+- Add a compact per-symbol report view.
+- Add export options for saved SQLite runs.
+- Add support for additional simulated event types without changing existing parser contracts.
