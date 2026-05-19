@@ -136,3 +136,37 @@ class OrderLifecycle:
         if include_events:
             payload["events"] = [event.to_dict() for event in self.events]
         return payload
+
+
+@dataclass(frozen=True)
+class MetricsSummary:
+    total_orders: int
+    filled_count: int
+    rejected_count: int
+    canceled_count: int
+    open_incomplete_count: int
+    average_ack_latency_ms: float | None
+    min_ack_latency_ms: float | None
+    max_ack_latency_ms: float | None
+    slow_ack_count: int
+    reject_reasons: dict[str, int]
+    counts_by_symbol: dict[str, int]
+    counts_by_side: dict[str, int]
+    status_counts: dict[str, int]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "total_orders": self.total_orders,
+            "filled_count": self.filled_count,
+            "rejected_count": self.rejected_count,
+            "canceled_count": self.canceled_count,
+            "open_incomplete_count": self.open_incomplete_count,
+            "average_ack_latency_ms": self.average_ack_latency_ms,
+            "min_ack_latency_ms": self.min_ack_latency_ms,
+            "max_ack_latency_ms": self.max_ack_latency_ms,
+            "slow_ack_count": self.slow_ack_count,
+            "reject_reasons": dict(self.reject_reasons),
+            "counts_by_symbol": dict(self.counts_by_symbol),
+            "counts_by_side": dict(self.counts_by_side),
+            "status_counts": dict(self.status_counts),
+        }
