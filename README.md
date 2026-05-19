@@ -58,7 +58,7 @@ tradeops-log-monitor/
 Run tests:
 
 ```bash
-python -m unittest
+python -m unittest discover -s tests
 ```
 
 More usage examples and sample output will be added as the CLI features land.
