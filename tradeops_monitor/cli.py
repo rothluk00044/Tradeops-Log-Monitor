@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
-from .anomalies import detect_anomalies
+from .anomalies import detect_anomalies, has_critical_anomalies
 from .lifecycle import reconstruct_lifecycles
 from .metrics import calculate_metrics
 from .models import AnalysisReport, OrderLifecycle, ParseResult
+from .output import format_report
 from .parser import parse_log_file
+from .storage import store_report
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -55,9 +58,33 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
-    parser.parse_args(argv)
-    parser.error("CLI implementation is not available yet.")
+    args = parser.parse_args(argv)
+
+    try:
+        if args.command == "analyze":
+            return _handle_analyze(args)
+        parser.error(f"Unknown command: {args.command}")
+    except (FileNotFoundError, IsADirectoryError, ValueError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
     return 1
+
+
+def _handle_analyze(args: argparse.Namespace) -> int:
+    report = build_analysis_report(
+        file_path=args.file,
+        input_format=args.format,
+        slow_ack_ms=args.slow_ack_ms,
+        symbol=args.symbol,
+    )
+
+    if args.db:
+        run_id = store_report(args.db, report)
+        print(f"stored analysis run #{run_id} in {args.db}", file=sys.stderr)
+
+    sys.stdout.write(format_report(report, output_format=args.output, show_orders=args.show_orders))
+    return 2 if has_critical_anomalies(report.anomalies) else 0
 
 
 def build_analysis_report(
