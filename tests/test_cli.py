@@ -105,6 +105,28 @@ class CliTests(unittest.TestCase):
             self.assertEqual(runs_stderr, "")
             self.assertEqual(runs_payload[0]["total_orders"], 3)
 
+    def test_analyze_rejects_non_positive_slow_ack_threshold(self) -> None:
+        exit_code, stdout, stderr = _run_cli(
+            [
+                "analyze",
+                "--file",
+                str(ROOT / "sample_logs" / "orders_basic.log"),
+                "--slow-ack-ms",
+                "0",
+            ]
+        )
+
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(stdout, "")
+        self.assertIn("--slow-ack-ms must be greater than zero", stderr)
+
+    def test_runs_rejects_non_positive_limit(self) -> None:
+        exit_code, stdout, stderr = _run_cli(["runs", "--db", "tradeops.db", "--limit", "0"])
+
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(stdout, "")
+        self.assertIn("--limit must be greater than zero", stderr)
+
 
 def _run_cli(argv: list[str]) -> tuple[int, str, str]:
     stdout = io.StringIO()
