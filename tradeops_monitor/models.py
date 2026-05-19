@@ -41,6 +41,17 @@ class AnomalySeverity(StrEnum):
     CRITICAL = "CRITICAL"
 
 
+class AnomalyType(StrEnum):
+    PARSE_ISSUE = "PARSE_ISSUE"
+    UNKNOWN_EVENT_TYPE = "UNKNOWN_EVENT_TYPE"
+    SLOW_ACK = "SLOW_ACK"
+    MISSING_ACK = "MISSING_ACK"
+    FILL_BEFORE_ACK = "FILL_BEFORE_ACK"
+    DUPLICATE_LIFECYCLE_EVENT = "DUPLICATE_LIFECYCLE_EVENT"
+    REJECT_SPIKE = "REJECT_SPIKE"
+    SYMBOL_ACTIVITY_SPIKE = "SYMBOL_ACTIVITY_SPIKE"
+
+
 @dataclass(frozen=True)
 class OrderEvent:
     timestamp: datetime | None
@@ -169,4 +180,26 @@ class MetricsSummary:
             "counts_by_symbol": dict(self.counts_by_symbol),
             "counts_by_side": dict(self.counts_by_side),
             "status_counts": dict(self.status_counts),
+        }
+
+
+@dataclass(frozen=True)
+class Anomaly:
+    anomaly_type: AnomalyType
+    severity: AnomalySeverity
+    message: str
+    order_id: str | None = None
+    symbol: str | None = None
+    line_number: int | None = None
+    details: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "type": self.anomaly_type.value,
+            "severity": self.severity.value,
+            "message": self.message,
+            "order_id": self.order_id,
+            "symbol": self.symbol,
+            "line_number": self.line_number,
+            "details": dict(self.details),
         }
