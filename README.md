@@ -1,26 +1,163 @@
 # TradeOps Log Monitor
 
-Local Python CLI for parsing simulated order-event logs, reconstructing order lifecycles, and flagging rejects, latency issues, and abnormal trading workflow patterns.
+Local Python CLI for parsing simulated order-event logs, reconstructing order lifecycles, and flagging rejects, latency issues, malformed input, and abnormal trading workflow patterns.
 
-## What It Does
+## Overview
 
-TradeOps Log Monitor reads local order event logs, groups events by order ID, reconstructs each order lifecycle, calculates operational metrics, and reports anomalies useful during support-style troubleshooting.
+TradeOps Log Monitor is a local-first command-line tool for analyzing order event streams. It reads log files from disk, groups events by order ID, reconstructs each order’s lifecycle, calculates operational metrics, and highlights anomalies that would matter during production-style support or troubleshooting.
 
-The project is intentionally local-first:
+The project is intentionally lightweight:
 
-- no external services
-- no cloud dependencies
-- no paid APIs
-- standard-library runtime code
-- standard-library `unittest` coverage
+- Runs fully locally
+- Uses Python standard library runtime code
+- Requires no cloud services, APIs, or external systems
+- Supports plain-text, JSON-lines, and CSV-style log inputs
+- Optionally stores analysis history in a local SQLite database
 
-## Planned CLI
+## What It Detects
+
+The analyzer is designed to make event-stream problems visible instead of silently ignoring them.
+
+It can detect:
+
+- Slow ACKs over a configurable threshold
+- Orders missing ACK events
+- Fills before ACKs
+- Duplicate lifecycle events
+- Unknown event types
+- Malformed log lines
+- Missing order IDs
+- Reject spikes by reason
+- Symbol-specific activity spikes
+
+These findings help distinguish normal order flow from patterns that may indicate latency, bad sequencing, rejected workflow paths, parser issues, or unexpected upstream behavior.
+
+## Example Log Input
+
+```text
+2026-05-19T09:30:01.125 ORDER_NEW id=ORD123 symbol=ES side=BUY qty=2
+2026-05-19T09:30:01.220 ORDER_ACK id=ORD123
+2026-05-19T09:30:02.000 ORDER_FILL id=ORD123 qty=2 price=5280.25
+2026-05-19T09:31:15.100 ORDER_NEW id=ORD124 symbol=NQ side=SELL qty=1
+2026-05-19T09:31:15.900 ORDER_REJECT id=ORD124 reason=RISK_LIMIT
+```
+
+## Quick Start
+
+From the repository root:
 
 ```bash
 python -m tradeops_monitor analyze --file sample_logs/orders_basic.log
+```
+
+Show per-order lifecycle details:
+
+```bash
+python -m tradeops_monitor analyze --file sample_logs/orders_basic.log --show-orders
+```
+
+Analyze a file with a stricter ACK latency threshold:
+
+```bash
+python -m tradeops_monitor analyze --file sample_logs/orders_anomalies.log --slow-ack-ms 250
+```
+
+Emit JSON for automation:
+
+```bash
 python -m tradeops_monitor analyze --file sample_logs/orders_anomalies.log --slow-ack-ms 250 --output json
+```
+
+Filter by symbol:
+
+```bash
+python -m tradeops_monitor analyze --file sample_logs/orders_basic.log --symbol ES --show-orders
+```
+
+## SQLite Storage
+
+Analysis runs can be stored in a local SQLite database:
+
+```bash
 python -m tradeops_monitor analyze --file sample_logs/orders_basic.log --db tradeops.db
+```
+
+List recent stored runs:
+
+```bash
 python -m tradeops_monitor runs --db tradeops.db
+```
+
+List runs as JSON:
+
+```bash
+python -m tradeops_monitor runs --db tradeops.db --output json
+```
+
+## CLI Options
+
+### Analyze Command
+
+```bash
+python -m tradeops_monitor analyze --file sample_logs/orders_basic.log [options]
+```
+
+Options:
+
+- `--file`: path to a local log file
+- `--format`: input format, one of `plain`, `json`, or `csv`
+- `--slow-ack-ms`: ACK latency threshold in milliseconds
+- `--output`: output format, either `text` or `json`
+- `--symbol`: only analyze orders for one symbol
+- `--show-orders`: include per-order lifecycle details
+- `--db`: optional local SQLite database path
+
+### Runs Command
+
+```bash
+python -m tradeops_monitor runs --db tradeops.db [options]
+```
+
+Options:
+
+- `--db`: local SQLite database path
+- `--limit`: maximum number of stored runs to display
+- `--output`: output format, either `text` or `json`
+
+## Exit Codes
+
+- `0`: analysis completed normally
+- `1`: input or CLI error, such as a missing file
+- `2`: analysis completed, but critical anomalies were found
+
+Exit code `2` is intentional. It means the tool successfully parsed enough data to report a serious issue, such as a fill before ACK or critical malformed input.
+
+## Sample Output
+
+```text
+TradeOps Log Monitor Summary
+============================
+Source: sample_logs/orders_basic.log
+Input format: plain
+Parsed events: 10
+Parse issues: 0
+
+Metrics
+- Total orders: 3
+- Filled: 2
+- Rejected: 0
+- Canceled: 1
+- Open/incomplete: 0
+- Slow ACKs: 0
+- Avg ACK latency: 211.7ms
+- Min ACK latency: 95.0ms
+- Max ACK latency: 390.0ms
+- Reject reasons: none
+- Counts by symbol: ES=1, NQ=1, YM=1
+- Counts by side: BUY=2, SELL=1
+
+Anomalies
+- None
 ```
 
 ## Project Structure
@@ -53,12 +190,87 @@ tradeops-log-monitor/
     test_storage.py
 ```
 
-## Development
+## How The Pipeline Works
 
-Run tests:
+1. `parser.py` reads local log lines and converts them into structured order events.
+2. `lifecycle.py` groups events by order ID and determines each order’s final status.
+3. `metrics.py` calculates counts, latency values, reject summaries, and symbol/side totals.
+4. `anomalies.py` flags suspicious or invalid workflow patterns.
+5. `output.py` formats the result as readable text or JSON.
+6. `storage.py` optionally persists runs, orders, events, and anomalies to SQLite.
+
+## Testing
+
+Run the full test suite:
 
 ```bash
 python -m unittest discover -s tests
 ```
 
-More usage examples and sample output will be added as the CLI features land.
+Run a focused test module:
+
+```bash
+python -m unittest tests.test_parser
+python -m unittest tests.test_lifecycle
+python -m unittest tests.test_anomalies
+```
+
+## Design Notes
+
+This project favors simple, inspectable code over framework-heavy abstractions. Dataclasses and enums define the core model, while parser, lifecycle, metrics, anomaly, output, and storage logic are separated into small modules.
+
+That separation makes it easier to extend the tool without rewriting the whole pipeline. For example, a new log format can be added in `parser.py`, a new order state can be represented in `models.py` and `lifecycle.py`, and a new operational rule can be added in `anomalies.py`.
+
+## Why The Output Matters
+
+The tool is not just counting log lines. It is reconstructing workflow state from event history.
+
+That means it can answer questions like:
+
+- Did the order ever receive an ACK?
+- Did a fill arrive before the order was acknowledged?
+- Did an order reject because of a specific repeated reason?
+- Did a symbol produce unusual activity?
+- Are malformed lines hiding data quality problems?
+- Are open or incomplete orders accumulating?
+
+Those questions are useful because operational failures often appear as patterns across events, not as a single obvious error line.
+
+## SQLite Schema
+
+When `--db` is provided, the tool creates a local SQLite database with a simple schema:
+
+- `runs`: one row per analysis execution
+- `orders`: reconstructed lifecycle summary per order
+- `events`: parsed event rows with original fields and raw line text
+- `anomalies`: detected anomalies with severity and details
+
+This keeps the project local while still making it possible to compare runs over time or build lightweight reporting on top of saved results.
+
+## Ways To Expand
+
+Possible next improvements:
+
+- Add configurable reject-spike and symbol-activity thresholds to the CLI.
+- Add richer CSV examples and documented CSV column expectations.
+- Add a `summary-by-symbol` command.
+- Add a command to inspect one stored SQLite run in detail.
+- Add support for more event types, such as replace, expire, hold, route, or bust events.
+- Add time-window analysis for bursts of rejects or latency spikes.
+- Add export commands for saved SQLite runs.
+- Add benchmark tests for larger files.
+- Add stricter lifecycle validation rules for impossible state transitions.
+- Add richer JSON schemas for downstream automation.
+
+## Local-First Implications
+
+Because the project is local-first, it can be run against sample logs, generated logs, or private local files without sending data anywhere. That makes it useful for development, debugging, demos, and repeatable offline analysis.
+
+The tradeoff is that it does not currently provide shared dashboards, distributed storage, alerting, or live stream ingestion. Those could be added later, but the current design keeps the core logic small, testable, and easy to reason about.
+
+## Summary
+
+TradeOps Log Monitor turns raw order-event logs into a structured operational view: what happened, which orders completed, which orders failed, where latency appeared, and which records need attention.
+
+It is small enough to understand quickly, but organized enough to grow into a more capable local diagnostics tool.
+````
