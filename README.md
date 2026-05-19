@@ -12,7 +12,7 @@ The project is intentionally local-first:
 - no cloud dependencies
 - no paid APIs
 - standard-library runtime code
-- optional `pytest` dependency for development tests
+- standard-library `unittest` coverage
 
 ## Planned CLI
 
@@ -55,17 +55,10 @@ tradeops-log-monitor/
 
 ## Development
 
-Install development dependencies:
-
-```bash
-python -m pip install -e ".[dev]"
-```
-
 Run tests:
 
 ```bash
-python -m pytest
+python -m unittest discover -s tests
 ```
 
 More usage examples and sample output will be added as the CLI features land.
-
