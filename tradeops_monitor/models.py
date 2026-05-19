@@ -98,3 +98,41 @@ class ParseResult:
     @property
     def malformed_count(self) -> int:
         return len(self.issues)
+
+
+@dataclass(frozen=True)
+class OrderLifecycle:
+    order_id: str
+    events: list[OrderEvent]
+    status: OrderStatus
+    symbol: str | None = None
+    side: str | None = None
+    ordered_qty: int | None = None
+    filled_qty: int = 0
+    new_time: datetime | None = None
+    ack_time: datetime | None = None
+    first_fill_time: datetime | None = None
+    final_time: datetime | None = None
+    ack_latency_ms: float | None = None
+    reject_reason: str | None = None
+    cancel_reason: str | None = None
+
+    def to_dict(self, include_events: bool = False) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "order_id": self.order_id,
+            "status": self.status.value,
+            "symbol": self.symbol,
+            "side": self.side,
+            "ordered_qty": self.ordered_qty,
+            "filled_qty": self.filled_qty,
+            "new_time": self.new_time.isoformat() if self.new_time else None,
+            "ack_time": self.ack_time.isoformat() if self.ack_time else None,
+            "first_fill_time": self.first_fill_time.isoformat() if self.first_fill_time else None,
+            "final_time": self.final_time.isoformat() if self.final_time else None,
+            "ack_latency_ms": self.ack_latency_ms,
+            "reject_reason": self.reject_reason,
+            "cancel_reason": self.cancel_reason,
+        }
+        if include_events:
+            payload["events"] = [event.to_dict() for event in self.events]
+        return payload
