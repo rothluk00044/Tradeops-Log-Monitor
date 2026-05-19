@@ -13,15 +13,5 @@ authors = [
 ]
 dependencies = []
 
-[project.optional-dependencies]
-dev = [
-  "pytest>=8.0"
-]
-
 [project.scripts]
 tradeops-monitor = "tradeops_monitor.cli:main"
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["."]
-
