@@ -52,6 +52,52 @@ Exit codes:
 - `1`: input or CLI error, such as a missing file.
 - `2`: analysis completed and critical anomalies were found.
 
+## Sample Input
+
+Plain-text logs use an ISO timestamp, event type, and key-value fields:
+
+```text
+2026-05-19T09:30:01.125 ORDER_NEW id=ORD123 symbol=ES side=BUY qty=2
+2026-05-19T09:30:01.220 ORDER_ACK id=ORD123
+2026-05-19T09:30:02.000 ORDER_FILL id=ORD123 qty=2 price=5280.25
+2026-05-19T09:31:15.100 ORDER_NEW id=ORD124 symbol=NQ side=SELL qty=1
+2026-05-19T09:31:15.900 ORDER_REJECT id=ORD124 reason=RISK_LIMIT
+```
+
+## Sample Output
+
+```text
+TradeOps Log Monitor Summary
+============================
+Source: sample_logs/orders_basic.log
+Input format: plain
+Parsed events: 10
+Parse issues: 0
+
+Metrics
+- Total orders: 3
+- Filled: 2
+- Rejected: 0
+- Canceled: 1
+- Open/incomplete: 0
+- Slow ACKs: 0
+- Avg ACK latency: 211.7ms
+- Min ACK latency: 95.0ms
+- Max ACK latency: 390.0ms
+- Reject reasons: none
+- Counts by symbol: ES=1, NQ=1, YM=1
+- Counts by side: BUY=2, SELL=1
+
+Anomalies
+- None
+```
+
+JSON output is available for automation:
+
+```bash
+python -m tradeops_monitor analyze --file sample_logs/orders_anomalies.log --output json
+```
+
 ## Project Structure
 
 ```text
