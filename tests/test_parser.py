@@ -84,3 +84,35 @@ class ParserTests(unittest.TestCase):
     def test_parse_log_file_missing_path(self) -> None:
         with self.assertRaises(FileNotFoundError):
             parse_log_file(Path("does-not-exist.log"))
+
+    def test_empty_input_returns_no_events_or_issues(self) -> None:
+        result = parse_lines([])
+
+        self.assertEqual(result.events, [])
+        self.assertEqual(result.issues, [])
+
+    def test_invalid_numeric_fields_are_reported_without_dropping_event(self) -> None:
+        result = parse_lines(
+            ["2026-05-19T09:30:01.125 ORDER_FILL id=ORD123 qty=two price=bad-price"]
+        )
+
+        self.assertEqual(len(result.events), 1)
+        self.assertIsNone(result.events[0].qty)
+        self.assertIsNone(result.events[0].price)
+        self.assertEqual(len(result.issues), 2)
+
+    def test_malformed_key_value_token_is_visible(self) -> None:
+        result = parse_lines(
+            ["2026-05-19T09:30:01.125 ORDER_NEW id=ORD123 symbol=ES side BUY qty=1"]
+        )
+
+        self.assertEqual(len(result.events), 1)
+        self.assertEqual(len(result.issues), 1)
+        self.assertIn("Malformed field token", result.issues[0].message)
+
+    def test_invalid_json_line_is_reported(self) -> None:
+        result = parse_lines(["not-json"], log_format="json")
+
+        self.assertEqual(result.events, [])
+        self.assertEqual(len(result.issues), 1)
+        self.assertIn("Invalid JSON", result.issues[0].message)
