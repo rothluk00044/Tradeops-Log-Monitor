@@ -5,6 +5,7 @@ from __future__ import annotations
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from tradeops_monitor.anomalies import detect_anomalies
@@ -24,7 +25,7 @@ class StorageTests(unittest.TestCase):
             run_id = store_report(db_path, report)
 
             self.assertEqual(run_id, 1)
-            with sqlite3.connect(db_path) as connection:
+            with closing(sqlite3.connect(db_path)) as connection:
                 run_count = connection.execute("SELECT COUNT(*) FROM runs").fetchone()[0]
                 order_count = connection.execute("SELECT COUNT(*) FROM orders").fetchone()[0]
                 event_count = connection.execute("SELECT COUNT(*) FROM events").fetchone()[0]

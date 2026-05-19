@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -78,24 +79,25 @@ def initialize_database(db_path: str | Path) -> None:
     path = Path(db_path)
     if path.parent and not path.parent.exists():
         path.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(path) as connection:
-        connection.executescript(SCHEMA)
+    with closing(sqlite3.connect(path)) as connection:
+        with connection:
+            connection.executescript(SCHEMA)
 
 
 def store_report(db_path: str | Path, report: AnalysisReport) -> int:
     initialize_database(db_path)
-    with sqlite3.connect(db_path) as connection:
-        run_id = _insert_run(connection, report)
-        _insert_orders(connection, run_id, report)
-        _insert_events(connection, run_id, report)
-        _insert_anomalies(connection, run_id, report)
-        connection.commit()
-        return run_id
+    with closing(sqlite3.connect(db_path)) as connection:
+        with connection:
+            run_id = _insert_run(connection, report)
+            _insert_orders(connection, run_id, report)
+            _insert_events(connection, run_id, report)
+            _insert_anomalies(connection, run_id, report)
+            return run_id
 
 
 def list_recent_runs(db_path: str | Path, *, limit: int = 10) -> list[StoredRun]:
     initialize_database(db_path)
-    with sqlite3.connect(db_path) as connection:
+    with closing(sqlite3.connect(db_path)) as connection:
         connection.row_factory = sqlite3.Row
         rows = connection.execute(
             """
