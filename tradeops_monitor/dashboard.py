@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -430,5 +432,20 @@ def _severity_cell_style(value: str) -> str:
     return colors.get(value, "")
 
 
+def _running_inside_streamlit() -> bool:
+    try:
+        from streamlit.runtime.scriptrunner import get_script_run_ctx
+    except Exception:
+        return False
+    return get_script_run_ctx() is not None
+
+
+def _launch_with_streamlit() -> int:
+    return subprocess.call([sys.executable, "-m", "streamlit", "run", str(Path(__file__).resolve())])
+
+
 if __name__ == "__main__":
-    main()
+    if _running_inside_streamlit():
+        main()
+    else:
+        raise SystemExit(_launch_with_streamlit())
