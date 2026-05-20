@@ -104,6 +104,8 @@ python -m tradeops_monitor analyze --file sample_logs/orders_basic.log --symbol 
 
 ## Dashboard
 
+The dashboard is currently in active development. It is usable for local exploration, sample-log analysis, CLI-engine validation, and UI iteration, but it should be treated as a development preview rather than a fully finished application.
+
 Launch the local dashboard:
 
 ```bash
@@ -117,6 +119,16 @@ python -m tradeops_monitor.dashboard
 ```
 
 The dashboard keeps the CLI engine intact and reuses the same parser, lifecycle reconstruction, metrics, anomaly detection, and SQLite storage code.
+
+Current dashboard development status:
+
+- Core analysis tabs are implemented.
+- Sample-log selection and file upload are implemented.
+- SQLite save and recent-run listing are implemented.
+- Markdown and JSON report export are implemented.
+- Reloading a full saved run back into all dashboard tabs is not implemented yet.
+- Replay mode is currently a chronological timeline view, not timed animation.
+- Charts use Streamlit's built-in chart components and may be expanded later.
 
 Typical dashboard workflow:
 
@@ -402,6 +414,7 @@ Possible next improvements:
 
 ## Current Limitations
 
+- The dashboard is still in development and is not intended to be treated as a complete monitoring product yet.
 - Run History lists saved analysis runs, but it does not yet reload a previous run into every dashboard tab.
 - CSV parsing is supported, but the sample data is mostly plain-text logs.
 - Dashboard charts use Streamlit's built-in chart components to keep dependencies light.
