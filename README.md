@@ -4,7 +4,7 @@ Local Python CLI for parsing simulated order-event logs, reconstructing order li
 
 ## Overview
 
-TradeOps Log Monitor is a local-first command-line tool for analyzing order event streams. It reads log files from disk, groups events by order ID, reconstructs each order’s lifecycle, calculates operational metrics, and highlights anomalies that would matter during production-style support or troubleshooting.
+TradeOps Log Monitor is a local-first command-line tool for analyzing order event streams. It reads log files from disk, groups events by order ID, reconstructs each order's lifecycle, calculates operational metrics, and highlights anomalies that would matter during production-style support or troubleshooting.
 
 The project is intentionally lightweight:
 
@@ -193,7 +193,7 @@ tradeops-log-monitor/
 ## How The Pipeline Works
 
 1. `parser.py` reads local log lines and converts them into structured order events.
-2. `lifecycle.py` groups events by order ID and determines each order’s final status.
+2. `lifecycle.py` groups events by order ID and determines each order's final status.
 3. `metrics.py` calculates counts, latency values, reject summaries, and symbol/side totals.
 4. `anomalies.py` flags suspicious or invalid workflow patterns.
 5. `output.py` formats the result as readable text or JSON.
@@ -273,4 +273,3 @@ The tradeoff is that it does not currently provide shared dashboards, distribute
 TradeOps Log Monitor turns raw order-event logs into a structured operational view: what happened, which orders completed, which orders failed, where latency appeared, and which records need attention.
 
 It is small enough to understand quickly, but organized enough to grow into a more capable local diagnostics tool.
-````

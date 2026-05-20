@@ -23,8 +23,8 @@ def parse_log_file(path: str | Path, log_format: str = "plain") -> ParseResult:
     if not file_path.is_file():
         raise IsADirectoryError(f"Log path is not a file: {file_path}")
 
-    text = file_path.read_text(encoding="utf-8")
-    return parse_lines(text.splitlines(), log_format=log_format)
+    with file_path.open("r", encoding="utf-8", newline="") as handle:
+        return parse_lines(handle, log_format=log_format)
 
 
 def parse_lines(lines: Iterable[str], log_format: str = "plain") -> ParseResult:
@@ -132,19 +132,15 @@ def _parse_json_lines(lines: Iterable[str]) -> ParseResult:
 
 
 def _parse_csv_lines(lines: Iterable[str]) -> ParseResult:
-    rows = list(lines)
-    if not rows:
-        return ParseResult()
-
     events: list[OrderEvent] = []
     issues: list[ParseIssue] = []
-    reader = csv.DictReader(rows)
-    for line_number, row in enumerate(reader, start=2):
-        raw_line = rows[line_number - 1] if line_number - 1 < len(rows) else ""
+    reader = csv.DictReader(lines)
+    for row in reader:
+        line_number = reader.line_num
         event, row_issues = _event_from_mapping(
             {key: value for key, value in row.items() if key is not None},
             line_number=line_number,
-            raw_line=raw_line,
+            raw_line="",
             source_format="csv",
         )
         issues.extend(row_issues)
