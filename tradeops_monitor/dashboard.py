@@ -9,15 +9,22 @@ import streamlit as st
 
 from .models import AnalysisReport
 from .reporting import (
+    ANOMALY_EXPLANATIONS,
+    anomaly_rows,
     assess_operational_severity,
     build_incident_summary,
     build_json_export,
     build_markdown_report,
+    event_timeline_rows,
+    latency_percentiles,
+    latency_rows,
+    order_rows,
     report_filename,
+    symbol_summary_rows,
     unknown_event_count,
 )
 from .services import build_analysis_report, build_analysis_report_from_lines
-from .storage import store_report
+from .storage import list_recent_runs, store_report
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -45,17 +52,17 @@ def main() -> None:
     with tabs[0]:
         _render_overview(report)
     with tabs[1]:
-        st.info("Order lifecycle table will appear here.")
+        _render_orders(report)
     with tabs[2]:
-        st.info("Anomaly review will appear here.")
+        _render_anomalies(report)
     with tabs[3]:
-        st.info("Latency distribution will appear here.")
+        _render_latency(report)
     with tabs[4]:
-        st.info("Symbol activity will appear here.")
+        _render_symbols(report)
     with tabs[5]:
         _render_run_history_controls(report)
     with tabs[6]:
-        st.info("Replay mode will appear here.")
+        _render_replay(report)
     with tabs[7]:
         _render_about()
 
@@ -167,7 +174,164 @@ def _render_run_history_controls(report: AnalysisReport) -> None:
     if st.button("Save current run", use_container_width=False):
         run_id = store_report(db_path, report)
         st.success(f"Saved analysis run #{run_id} to {db_path}.")
-    st.caption("Recent run table is added in the next dashboard layer.")
+
+    try:
+        runs = list_recent_runs(db_path, limit=25)
+    except Exception as exc:  # Keep database path issues visible in the UI.
+        st.error(str(exc))
+        return
+
+    if not runs:
+        st.info("No stored runs found for this database path.")
+        return
+
+    run_df = pd.DataFrame([run.to_dict() for run in runs])
+    st.dataframe(run_df, use_container_width=True, hide_index=True)
+
+
+def _render_orders(report: AnalysisReport) -> None:
+    st.subheader("Orders")
+    rows = order_rows(report)
+    if not rows:
+        st.info("No orders matched the current analysis filters.")
+        return
+
+    df = pd.DataFrame(rows)
+    filters = st.columns([1.4, 1, 1, 1])
+    order_query = filters[0].text_input("Search order ID", placeholder="ORD123").strip().upper()
+    symbol_options = sorted(df["symbol"].dropna().unique())
+    side_options = sorted(df["side"].dropna().unique())
+    status_options = sorted(df["status"].dropna().unique())
+    selected_symbols = filters[1].multiselect("Symbol", symbol_options)
+    selected_sides = filters[2].multiselect("Side", side_options)
+    selected_statuses = filters[3].multiselect("Status", status_options)
+
+    filtered = df
+    if order_query:
+        filtered = filtered[filtered["order_id"].str.upper().str.contains(order_query, na=False)]
+    if selected_symbols:
+        filtered = filtered[filtered["symbol"].isin(selected_symbols)]
+    if selected_sides:
+        filtered = filtered[filtered["side"].isin(selected_sides)]
+    if selected_statuses:
+        filtered = filtered[filtered["status"].isin(selected_statuses)]
+
+    st.dataframe(
+        filtered.style.map(_status_cell_style, subset=["status"]),
+        use_container_width=True,
+        hide_index=True,
+    )
+
+    selected_order = st.selectbox("Inspect event history", [""] + sorted(report.lifecycles))
+    if selected_order:
+        lifecycle = report.lifecycles[selected_order]
+        event_df = pd.DataFrame(
+            [
+                {
+                    "timestamp": event.timestamp.isoformat() if event.timestamp else None,
+                    "event_type": event.raw_event_type,
+                    "qty": event.qty,
+                    "price": event.price,
+                    "reason": event.reason,
+                    "line_number": event.line_number,
+                    "raw_line": event.raw_line,
+                }
+                for event in lifecycle.events
+            ]
+        )
+        st.markdown(f"**{selected_order} final status:** `{lifecycle.status.value}`")
+        st.dataframe(event_df, use_container_width=True, hide_index=True)
+
+
+def _render_anomalies(report: AnalysisReport) -> None:
+    st.subheader("Anomalies")
+    rows = anomaly_rows(report)
+    if not rows:
+        st.success("No anomalies detected for the current analysis.")
+        return
+
+    df = pd.DataFrame(rows)
+    filters = st.columns(3)
+    selected_severities = filters[0].multiselect("Severity", sorted(df["severity"].unique()))
+    selected_types = filters[1].multiselect("Type", sorted(df["type"].unique()))
+    order_query = filters[2].text_input("Order ID", placeholder="Optional").strip().upper()
+
+    filtered = df
+    if selected_severities:
+        filtered = filtered[filtered["severity"].isin(selected_severities)]
+    if selected_types:
+        filtered = filtered[filtered["type"].isin(selected_types)]
+    if order_query:
+        filtered = filtered[filtered["order_id"].fillna("").str.upper().str.contains(order_query)]
+
+    st.dataframe(
+        filtered.style.map(_severity_cell_style, subset=["severity"]),
+        use_container_width=True,
+        hide_index=True,
+    )
+
+    with st.expander("Anomaly type guide", expanded=False):
+        for anomaly_type, explanation in ANOMALY_EXPLANATIONS.items():
+            st.markdown(f"**{anomaly_type}:** {explanation}")
+
+
+def _render_latency(report: AnalysisReport) -> None:
+    st.subheader("Latency")
+    rows = latency_rows(report)
+    if not rows:
+        st.info("No ACK latency values are available.")
+        return
+
+    df = pd.DataFrame(rows)
+    percentiles = latency_percentiles(report)
+    cols = st.columns(4)
+    cols[0].metric("Threshold", f"{report.slow_ack_ms}ms")
+    cols[1].metric("p50", _format_ms(percentiles["p50"]))
+    cols[2].metric("p95", _format_ms(percentiles["p95"]))
+    cols[3].metric("Max", _format_ms(percentiles["max"]))
+
+    chart_df = df.sort_values("ack_latency_ms").set_index("order_id")[["ack_latency_ms"]]
+    st.bar_chart(chart_df, use_container_width=True)
+    st.markdown("**Top slowest orders**")
+    st.dataframe(df.head(10), use_container_width=True, hide_index=True)
+
+
+def _render_symbols(report: AnalysisReport) -> None:
+    st.subheader("Symbols")
+    rows = symbol_summary_rows(report)
+    if not rows:
+        st.info("No symbol-level data is available.")
+        return
+
+    df = pd.DataFrame(rows)
+    chart_df = df.set_index("symbol")
+    left, right = st.columns(2)
+    left.markdown("**Order count by symbol**")
+    left.bar_chart(chart_df[["orders"]], use_container_width=True)
+    right.markdown("**Reject rate by symbol**")
+    right.bar_chart(chart_df[["reject_rate"]], use_container_width=True)
+    st.dataframe(df, use_container_width=True, hide_index=True)
+
+
+def _render_replay(report: AnalysisReport) -> None:
+    st.subheader("Replay Mode")
+    rows = event_timeline_rows(report)
+    if not rows:
+        st.info("No events are available to replay.")
+        return
+
+    max_events = len(rows)
+    visible_count = st.slider("Timeline position", min_value=1, max_value=max_events, value=max_events)
+    visible = pd.DataFrame(rows[:visible_count])
+    st.caption("Replay mode shows the event stream in chronological order up to the selected point.")
+    st.dataframe(visible, use_container_width=True, hide_index=True)
+
+    latest = rows[visible_count - 1]
+    st.markdown(
+        f"Latest event: `{latest['event_type']}` "
+        f"for order `{latest['order_id'] or 'UNKNOWN'}` "
+        f"at `{latest['timestamp'] or 'UNKNOWN'}`"
+    )
 
 
 def _render_about() -> None:
@@ -236,6 +400,29 @@ def _format_ms(value: float | None) -> str:
     if value is None:
         return "n/a"
     return f"{value:.1f}ms"
+
+
+def _status_cell_style(value: str) -> str:
+    colors = {
+        "FILLED": "background-color: #14532d; color: #bbf7d0;",
+        "REJECTED": "background-color: #7f1d1d; color: #fecaca;",
+        "CANCELED": "background-color: #78350f; color: #fde68a;",
+        "PARTIALLY_FILLED": "background-color: #1e3a8a; color: #bfdbfe;",
+        "ACKED": "background-color: #164e63; color: #a5f3fc;",
+        "NEW_ONLY": "background-color: #3f3f46; color: #e4e4e7;",
+        "INCOMPLETE": "background-color: #581c87; color: #e9d5ff;",
+        "UNKNOWN": "background-color: #3f3f46; color: #e4e4e7;",
+    }
+    return colors.get(value, "")
+
+
+def _severity_cell_style(value: str) -> str:
+    colors = {
+        "INFO": "background-color: #164e63; color: #a5f3fc;",
+        "WARNING": "background-color: #78350f; color: #fde68a;",
+        "CRITICAL": "background-color: #7f1d1d; color: #fecaca;",
+    }
+    return colors.get(value, "")
 
 
 if __name__ == "__main__":
