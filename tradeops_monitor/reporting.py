@@ -261,6 +261,16 @@ def build_json_export(report: AnalysisReport) -> str:
     return json.dumps(payload, indent=2, sort_keys=True)
 
 
+def save_report_exports(report: AnalysisReport, reports_dir: str | Path = "reports") -> tuple[Path, Path]:
+    output_dir = Path(reports_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    markdown_path = output_dir / report_filename(report.source_file, "md")
+    json_path = output_dir / report_filename(report.source_file, "json")
+    markdown_path.write_text(build_markdown_report(report), encoding="utf-8")
+    json_path.write_text(build_json_export(report), encoding="utf-8")
+    return markdown_path, json_path
+
+
 def report_filename(source_file: str, suffix: str) -> str:
     stem = Path(source_file).stem or "analysis"
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

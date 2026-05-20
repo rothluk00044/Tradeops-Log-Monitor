@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import tempfile
 import unittest
+from pathlib import Path
 
 from tradeops_monitor.reporting import (
     assess_operational_severity,
@@ -12,6 +14,7 @@ from tradeops_monitor.reporting import (
     build_markdown_report,
     latency_percentiles,
     order_rows,
+    save_report_exports,
     symbol_summary_rows,
     unknown_event_count,
 )
@@ -60,6 +63,17 @@ class ReportingTests(unittest.TestCase):
         self.assertIn("operational_severity", payload)
         self.assertEqual(len(order_rows(report)), 4)
         self.assertEqual(unknown_event_count(report), 0)
+
+    def test_save_report_exports_writes_markdown_and_json(self) -> None:
+        report = _sample_report()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            markdown_path, json_path = save_report_exports(report, Path(temp_dir))
+
+            self.assertTrue(markdown_path.exists())
+            self.assertTrue(json_path.exists())
+            self.assertIn("TradeOps Analysis Report", markdown_path.read_text(encoding="utf-8"))
+            self.assertIn("incident_summary", json_path.read_text(encoding="utf-8"))
 
 
 def _sample_report():

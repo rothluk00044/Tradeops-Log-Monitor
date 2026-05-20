@@ -20,6 +20,7 @@ from .reporting import (
     latency_rows,
     order_rows,
     report_filename,
+    save_report_exports,
     symbol_summary_rows,
     unknown_event_count,
 )
@@ -151,7 +152,7 @@ def _render_overview(report: AnalysisReport) -> None:
 
 
 def _render_export_actions(report: AnalysisReport) -> None:
-    left, right = st.columns([1, 1])
+    left, middle, right = st.columns([1, 1, 1])
     with left:
         st.download_button(
             "Download Markdown report",
@@ -159,13 +160,17 @@ def _render_export_actions(report: AnalysisReport) -> None:
             file_name=report_filename(report.source_file, "md"),
             mime="text/markdown",
         )
-    with right:
+    with middle:
         st.download_button(
             "Download JSON report",
             data=build_json_export(report),
             file_name=report_filename(report.source_file, "json"),
             mime="application/json",
         )
+    with right:
+        if st.button("Save report files"):
+            markdown_path, json_path = save_report_exports(report)
+            st.success(f"Saved {markdown_path} and {json_path}.")
 
 
 def _render_run_history_controls(report: AnalysisReport) -> None:

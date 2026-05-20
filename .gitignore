@@ -8,4 +8,4 @@ venv/
 *.db
 *.sqlite
 *.sqlite3
-
+reports/
