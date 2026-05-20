@@ -74,6 +74,41 @@ Filter by symbol:
 python -m tradeops_monitor analyze --file sample_logs/orders_basic.log --symbol ES --show-orders
 ```
 
+## Dashboard
+
+Install the dashboard dependencies:
+
+```bash
+python -m pip install -e .
+```
+
+Launch the local dashboard:
+
+```bash
+streamlit run dashboard.py
+```
+
+You can also launch it as a module:
+
+```bash
+python -m tradeops_monitor.dashboard
+```
+
+The dashboard keeps the CLI engine intact and reuses the same parser, lifecycle reconstruction, metrics, anomaly detection, and SQLite storage code.
+
+Dashboard sections:
+
+- `Overview`: high-level metrics, operational severity, malformed line count, unknown event count, and incident summary.
+- `Orders`: lifecycle table with filters for order ID, symbol, side, and final status.
+- `Anomalies`: anomaly table with severity, type, message, and plain-English explanations.
+- `Latency`: ACK latency chart, p50, p95, max, slow ACK threshold, and slowest orders.
+- `Symbols`: symbol-level order counts, reject rates, and average ACK latency.
+- `Run History`: save the current analysis to SQLite and review recent stored runs.
+- `Replay`: chronological event timeline for replaying the stream up to a selected point.
+- `About`: local-first usage notes and sample log format.
+
+The dashboard also supports Markdown and JSON report export. Download reports from the UI or save local report files under `reports/`.
+
 ## SQLite Storage
 
 Analysis runs can be stored in a local SQLite database:
@@ -169,24 +204,35 @@ tradeops-log-monitor/
   sample_logs/
     orders_basic.log
     orders_anomalies.log
+    orders_high_rejects.log
+    orders_latency_spike.log
     orders_large.log
+    orders_malformed.log
+    orders_mixed_anomalies.log
+    orders_normal_day.log
   tradeops_monitor/
     __init__.py
     __main__.py
     cli.py
+    dashboard.py
     models.py
     parser.py
     lifecycle.py
     metrics.py
     anomalies.py
+    reporting.py
+    services.py
     storage.py
     output.py
+  dashboard.py
   tests/
     test_parser.py
     test_lifecycle.py
     test_metrics.py
     test_anomalies.py
     test_cli.py
+    test_reporting.py
+    test_services.py
     test_storage.py
 ```
 
@@ -198,6 +244,8 @@ tradeops-log-monitor/
 4. `anomalies.py` flags suspicious or invalid workflow patterns.
 5. `output.py` formats the result as readable text or JSON.
 6. `storage.py` optionally persists runs, orders, events, and anomalies to SQLite.
+7. `reporting.py` creates incident summaries, severity scoring, dashboard table rows, and report exports.
+8. `dashboard.py` presents the local Streamlit interface without duplicating analysis logic.
 
 ## Testing
 
@@ -214,6 +262,17 @@ python -m unittest tests.test_parser
 python -m unittest tests.test_lifecycle
 python -m unittest tests.test_anomalies
 ```
+
+## Screenshot Placeholder
+
+Dashboard screenshots can be added here after running the Streamlit app locally.
+
+Suggested captures:
+
+- Overview tab with severity and summary metrics.
+- Orders tab with lifecycle filters applied.
+- Anomalies tab showing mixed anomaly types.
+- Latency tab during a latency spike scenario.
 
 ## Design Notes
 
