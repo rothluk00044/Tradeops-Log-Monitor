@@ -104,6 +104,7 @@ class CliTests(unittest.TestCase):
             self.assertEqual(runs_exit, 0)
             self.assertEqual(runs_stderr, "")
             self.assertEqual(runs_payload[0]["total_orders"], 3)
+            self.assertEqual(runs_payload[0]["rejected_count"], 0)
 
 
 def _run_cli(argv: list[str]) -> tuple[int, str, str]:

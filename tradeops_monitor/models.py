@@ -243,6 +243,7 @@ class StoredRun:
     source_file: str
     input_format: str
     total_orders: int
+    rejected_count: int
     anomaly_count: int
     critical_anomaly_count: int
 
@@ -253,6 +254,7 @@ class StoredRun:
             "source_file": self.source_file,
             "input_format": self.input_format,
             "total_orders": self.total_orders,
+            "rejected_count": self.rejected_count,
             "anomaly_count": self.anomaly_count,
             "critical_anomaly_count": self.critical_anomaly_count,
         }

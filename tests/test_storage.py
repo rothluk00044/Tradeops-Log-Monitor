@@ -48,6 +48,7 @@ class StorageTests(unittest.TestCase):
             self.assertEqual(runs[0].source_file, "sample.log")
             self.assertEqual(runs[0].input_format, "plain")
             self.assertEqual(runs[0].total_orders, 2)
+            self.assertEqual(runs[0].rejected_count, 1)
 
 
 def _build_report() -> AnalysisReport:
