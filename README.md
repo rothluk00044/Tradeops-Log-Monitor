@@ -42,6 +42,34 @@ These findings help distinguish normal order flow from patterns that may indicat
 2026-05-19T09:31:15.900 ORDER_REJECT id=ORD124 reason=RISK_LIMIT
 ```
 
+## Installation
+
+Python 3.11 or newer is recommended.
+
+Create and activate a virtual environment:
+
+```bash
+python -m venv .venv
+```
+
+On Windows PowerShell:
+
+```bash
+.\.venv\Scripts\Activate.ps1
+```
+
+On macOS or Linux:
+
+```bash
+source .venv/bin/activate
+```
+
+Install the project and dashboard dependencies:
+
+```bash
+python -m pip install -e .
+```
+
 ## Quick Start
 
 From the repository root:
@@ -76,12 +104,6 @@ python -m tradeops_monitor analyze --file sample_logs/orders_basic.log --symbol 
 
 ## Dashboard
 
-Install the dashboard dependencies:
-
-```bash
-python -m pip install -e .
-```
-
 Launch the local dashboard:
 
 ```bash
@@ -96,6 +118,15 @@ python -m tradeops_monitor.dashboard
 
 The dashboard keeps the CLI engine intact and reuses the same parser, lifecycle reconstruction, metrics, anomaly detection, and SQLite storage code.
 
+Typical dashboard workflow:
+
+1. Select one of the sample logs or upload a local log file.
+2. Set the input format and slow ACK threshold.
+3. Run analysis.
+4. Review severity, metrics, orders, anomalies, latency, and symbol activity.
+5. Save the run to SQLite if you want local history.
+6. Export a Markdown or JSON report if you need a shareable local artifact.
+
 Dashboard sections:
 
 - `Overview`: high-level metrics, operational severity, malformed line count, unknown event count, and incident summary.
@@ -108,6 +139,21 @@ Dashboard sections:
 - `About`: local-first usage notes and sample log format.
 
 The dashboard also supports Markdown and JSON report export. Download reports from the UI or save local report files under `reports/`.
+
+## Sample Log Scenarios
+
+The repository includes multiple local sample logs for testing different operating conditions:
+
+- `orders_basic.log`: small clean lifecycle sample.
+- `orders_anomalies.log`: mixed malformed lines, unknown events, rejects, slow ACKs, and sequencing issues.
+- `orders_large.log`: larger mixed order flow.
+- `orders_normal_day.log`: mostly normal fills, ACKs, and one cancellation.
+- `orders_high_rejects.log`: elevated rejects with repeated reject reasons.
+- `orders_latency_spike.log`: multiple slow ACKs across symbols.
+- `orders_malformed.log`: malformed fields, unknown events, missing IDs, and invalid numeric values.
+- `orders_mixed_anomalies.log`: combined slow ACK, reject spike, duplicate lifecycle event, unknown event, malformed row, and fill-before-ACK examples.
+
+These files are intentionally small enough to inspect by hand while still exercising the main parser, lifecycle, metrics, anomaly, dashboard, and report-export paths.
 
 ## SQLite Storage
 
@@ -306,6 +352,37 @@ When `--db` is provided, the tool creates a local SQLite database with a simple 
 
 This keeps the project local while still making it possible to compare runs over time or build lightweight reporting on top of saved results.
 
+## Operational Severity
+
+The dashboard includes a deterministic operational severity score:
+
+- `Low`: no elevated operational signals.
+- `Medium`: warning-level conditions such as elevated latency or reject activity.
+- `High`: critical anomalies, high reject rate, repeated missing ACKs, repeated malformed lines, or fill-before-ACK issues.
+
+The severity is rule-based and explainable. It is not AI-generated. The Overview tab shows the final severity and the specific reasons behind it.
+
+## Incident Summary
+
+The dashboard creates a plain-English incident summary from the analysis results. It summarizes:
+
+- Total orders processed.
+- Rejected order count and dominant reject reason.
+- Slow ACK count and threshold.
+- Symbols most associated with slow ACKs when applicable.
+- Operational severity and rationale.
+
+This summary is deterministic and based only on parsed local data.
+
+## Report Export
+
+Dashboard reports can be exported in two formats:
+
+- Markdown: useful for local notes or ticket-style summaries.
+- JSON: useful for automation or downstream analysis.
+
+The dashboard provides download buttons and a local save action. Local saved reports are written under `reports/`, which is ignored by Git.
+
 ## Ways To Expand
 
 Possible next improvements:
@@ -313,13 +390,22 @@ Possible next improvements:
 - Add configurable reject-spike and symbol-activity thresholds to the CLI.
 - Add richer CSV examples and documented CSV column expectations.
 - Add a `summary-by-symbol` command.
-- Add a command to inspect one stored SQLite run in detail.
+- Add a command or dashboard action to inspect one stored SQLite run in detail.
 - Add support for more event types, such as replace, expire, hold, route, or bust events.
 - Add time-window analysis for bursts of rejects or latency spikes.
 - Add export commands for saved SQLite runs.
 - Add benchmark tests for larger files.
 - Add stricter lifecycle validation rules for impossible state transitions.
 - Add richer JSON schemas for downstream automation.
+- Add richer dashboard charting if the data model grows beyond Streamlit's built-in charts.
+- Add replay controls that step through events with timed playback.
+
+## Current Limitations
+
+- Run History lists saved analysis runs, but it does not yet reload a previous run into every dashboard tab.
+- CSV parsing is supported, but the sample data is mostly plain-text logs.
+- Dashboard charts use Streamlit's built-in chart components to keep dependencies light.
+- Severity scoring is intentionally simple and should be tuned if new anomaly types are added.
 
 ## Local-First Implications
 
