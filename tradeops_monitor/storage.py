@@ -101,7 +101,15 @@ def list_recent_runs(db_path: str | Path, *, limit: int = 10) -> list[StoredRun]
         connection.row_factory = sqlite3.Row
         rows = connection.execute(
             """
-            SELECT id, created_at, source_file, input_format, total_orders, anomaly_count, critical_anomaly_count
+            SELECT
+                id,
+                created_at,
+                source_file,
+                input_format,
+                total_orders,
+                rejected_count,
+                anomaly_count,
+                critical_anomaly_count
             FROM runs
             ORDER BY id DESC
             LIMIT ?
@@ -115,6 +123,7 @@ def list_recent_runs(db_path: str | Path, *, limit: int = 10) -> list[StoredRun]
             source_file=row["source_file"],
             input_format=row["input_format"],
             total_orders=row["total_orders"],
+            rejected_count=row["rejected_count"],
             anomaly_count=row["anomaly_count"],
             critical_anomaly_count=row["critical_anomaly_count"],
         )

@@ -126,6 +126,7 @@ def format_runs_text(runs: list[StoredRun]) -> str:
         lines.append(
             f"- #{run.run_id} {run.created_at} "
             f"source={run.source_file} format={run.input_format} "
-            f"orders={run.total_orders} anomalies={run.anomaly_count} critical={run.critical_anomaly_count}"
+            f"orders={run.total_orders} rejected={run.rejected_count} "
+            f"anomalies={run.anomaly_count} critical={run.critical_anomaly_count}"
         )
     return "\n".join(lines) + "\n"

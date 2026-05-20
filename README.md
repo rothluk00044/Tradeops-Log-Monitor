@@ -42,6 +42,34 @@ These findings help distinguish normal order flow from patterns that may indicat
 2026-05-19T09:31:15.900 ORDER_REJECT id=ORD124 reason=RISK_LIMIT
 ```
 
+## Installation
+
+Python 3.11 or newer is recommended.
+
+Create and activate a virtual environment:
+
+```bash
+python -m venv .venv
+```
+
+On Windows PowerShell:
+
+```bash
+.\.venv\Scripts\Activate.ps1
+```
+
+On macOS or Linux:
+
+```bash
+source .venv/bin/activate
+```
+
+Install the project and dashboard dependencies:
+
+```bash
+python -m pip install -e .
+```
+
 ## Quick Start
 
 From the repository root:
@@ -73,6 +101,39 @@ Filter by symbol:
 ```bash
 python -m tradeops_monitor analyze --file sample_logs/orders_basic.log --symbol ES --show-orders
 ```
+
+## Dashboard
+
+The dashboard is currently in active development. It is usable for local exploration, sample-log analysis, CLI-engine validation, and UI iteration, but it should be treated as a development preview rather than a fully finished application.
+
+Launch the local dashboard:
+
+```bash
+streamlit run dashboard.py
+```
+
+You can also launch it as a module:
+
+```bash
+python -m tradeops_monitor.dashboard
+```
+
+The dashboard keeps the CLI engine intact and reuses the same parser, lifecycle reconstruction, metrics, anomaly detection, and SQLite storage code.
+
+## Sample Log Scenarios
+
+The repository includes multiple local sample logs for testing different operating conditions:
+
+- `orders_basic.log`: small clean lifecycle sample.
+- `orders_anomalies.log`: mixed malformed lines, unknown events, rejects, slow ACKs, and sequencing issues.
+- `orders_large.log`: larger mixed order flow.
+- `orders_normal_day.log`: mostly normal fills, ACKs, and one cancellation.
+- `orders_high_rejects.log`: elevated rejects with repeated reject reasons.
+- `orders_latency_spike.log`: multiple slow ACKs across symbols.
+- `orders_malformed.log`: malformed fields, unknown events, missing IDs, and invalid numeric values.
+- `orders_mixed_anomalies.log`: combined slow ACK, reject spike, duplicate lifecycle event, unknown event, malformed row, and fill-before-ACK examples.
+
+These files are intentionally small enough to inspect by hand while still exercising the main parser, lifecycle, metrics, anomaly, dashboard, and report-export paths.
 
 ## SQLite Storage
 
@@ -169,24 +230,35 @@ tradeops-log-monitor/
   sample_logs/
     orders_basic.log
     orders_anomalies.log
+    orders_high_rejects.log
+    orders_latency_spike.log
     orders_large.log
+    orders_malformed.log
+    orders_mixed_anomalies.log
+    orders_normal_day.log
   tradeops_monitor/
     __init__.py
     __main__.py
     cli.py
+    dashboard.py
     models.py
     parser.py
     lifecycle.py
     metrics.py
     anomalies.py
+    reporting.py
+    services.py
     storage.py
     output.py
+  dashboard.py
   tests/
     test_parser.py
     test_lifecycle.py
     test_metrics.py
     test_anomalies.py
     test_cli.py
+    test_reporting.py
+    test_services.py
     test_storage.py
 ```
 
@@ -198,6 +270,8 @@ tradeops-log-monitor/
 4. `anomalies.py` flags suspicious or invalid workflow patterns.
 5. `output.py` formats the result as readable text or JSON.
 6. `storage.py` optionally persists runs, orders, events, and anomalies to SQLite.
+7. `reporting.py` creates incident summaries, severity scoring, dashboard table rows, and report exports.
+8. `dashboard.py` presents the local Streamlit interface without duplicating analysis logic.
 
 ## Testing
 
@@ -214,62 +288,3 @@ python -m unittest tests.test_parser
 python -m unittest tests.test_lifecycle
 python -m unittest tests.test_anomalies
 ```
-
-## Design Notes
-
-This project favors simple, inspectable code over framework-heavy abstractions. Dataclasses and enums define the core model, while parser, lifecycle, metrics, anomaly, output, and storage logic are separated into small modules.
-
-That separation makes it easier to extend the tool without rewriting the whole pipeline. For example, a new log format can be added in `parser.py`, a new order state can be represented in `models.py` and `lifecycle.py`, and a new operational rule can be added in `anomalies.py`.
-
-## Why The Output Matters
-
-The tool is not just counting log lines. It is reconstructing workflow state from event history.
-
-That means it can answer questions like:
-
-- Did the order ever receive an ACK?
-- Did a fill arrive before the order was acknowledged?
-- Did an order reject because of a specific repeated reason?
-- Did a symbol produce unusual activity?
-- Are malformed lines hiding data quality problems?
-- Are open or incomplete orders accumulating?
-
-Those questions are useful because operational failures often appear as patterns across events, not as a single obvious error line.
-
-## SQLite Schema
-
-When `--db` is provided, the tool creates a local SQLite database with a simple schema:
-
-- `runs`: one row per analysis execution
-- `orders`: reconstructed lifecycle summary per order
-- `events`: parsed event rows with original fields and raw line text
-- `anomalies`: detected anomalies with severity and details
-
-This keeps the project local while still making it possible to compare runs over time or build lightweight reporting on top of saved results.
-
-## Ways To Expand
-
-Possible next improvements:
-
-- Add configurable reject-spike and symbol-activity thresholds to the CLI.
-- Add richer CSV examples and documented CSV column expectations.
-- Add a `summary-by-symbol` command.
-- Add a command to inspect one stored SQLite run in detail.
-- Add support for more event types, such as replace, expire, hold, route, or bust events.
-- Add time-window analysis for bursts of rejects or latency spikes.
-- Add export commands for saved SQLite runs.
-- Add benchmark tests for larger files.
-- Add stricter lifecycle validation rules for impossible state transitions.
-- Add richer JSON schemas for downstream automation.
-
-## Local-First Implications
-
-Because the project is local-first, it can be run against sample logs, generated logs, or private local files without sending data anywhere. That makes it useful for development, debugging, demos, and repeatable offline analysis.
-
-The tradeoff is that it does not currently provide shared dashboards, distributed storage, alerting, or live stream ingestion. Those could be added later, but the current design keeps the core logic small, testable, and easy to reason about.
-
-## Summary
-
-TradeOps Log Monitor turns raw order-event logs into a structured operational view: what happened, which orders completed, which orders failed, where latency appeared, and which records need attention.
-
-It is small enough to understand quickly, but organized enough to grow into a more capable local diagnostics tool.
